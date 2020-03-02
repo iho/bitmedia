@@ -1,5 +1,7 @@
 package models
 
+import "go.mongodb.org/mongo-driver/bson/primitive"
+
 type User struct {
 	Email     string `json:"email" faker:"email"`
 	LastName  string `json:"last_name" faker:"last_name"`
@@ -10,8 +12,9 @@ type User struct {
 }
 
 type GameResult struct {
-	PointsGained string `json:"points_gained"`
-	WinStatus    string `json:"win_status"`
-	GameType     string `json:"game_type"`
-	Created      string `json:"created"`
+	PointsGained string             `json:"points_gained"`
+	WinStatus    string             `json:"win_status"`
+	GameType     string             `json:"game_type"`
+	Created      string             `json:"created"`
+	UserID       primitive.ObjectID `json:"user_id"`
 }
