@@ -5,12 +5,11 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
-	"math/rand"
-	"runtime"
-	"sync"
-
 	"log"
+	"math/rand"
+
 	"os"
+	"sync"
 	"time"
 
 	"github.com/iho/bitmedia/models"
@@ -103,14 +102,18 @@ func main() {
 		log.Fatal(err)
 	}
 	rand.Seed(time.Now().Unix())
-	ch := make(chan bool, MAX_CONCURENCY)
-	var wg sync.WaitGroup
-
+	wg := new(sync.WaitGroup)
+	wg.Add(len(insertionResult.InsertedIDs))
+	var throttler = make(chan bool, MAX_CONCURENCY)
 	for _, userID := range insertionResult.InsertedIDs {
 		primitiveUserID := userID.(primitive.ObjectID)
-		wg.Add(1)
-		go InsertGames(ctx, userGamesCollection, primitiveUserID, &gamesResultJSON, ch, &wg)
-		<-ch
+		throttler <- true
+		go func() {
+			defer wg.Done()
+			InsertGames(ctx, userGamesCollection, primitiveUserID, &gamesResultJSON)
+			<-throttler
+		}()
+
 	}
 
 	if err != nil {
@@ -120,8 +123,7 @@ func main() {
 	fmt.Println("Files have been loaded successfully")
 }
 
-func InsertGames(ctx context.Context, collection *mongo.Collection, UserID primitive.ObjectID, games *GameResultJSON, ch chan bool, wg *sync.WaitGroup) {
-	fmt.Println("thread started")
+func InsertGames(ctx context.Context, collection *mongo.Collection, UserID primitive.ObjectID, games *GameResultJSON) {
 	quantity := rand.Intn(MAXIMUM_SIZE-MINIMUM_SIZE) + MINIMUM_SIZE
 	var userGamesInterfacesArray []interface{} = make([]interface{}, quantity)
 	for i := 0; i < quantity; i++ {
@@ -134,15 +136,11 @@ func InsertGames(ctx context.Context, collection *mongo.Collection, UserID primi
 		log.Fatal(err)
 	}
 	fmt.Println(len(res.InsertedIDs))
-	ch <- true
-	wg.Done()
-	runtime.GC()
 }
 
 func parseGameDates(games *GameResultJSON) {
 	for i := 0; i < len(games.Objects); i++ {
-		game := &games.Objects[rand.Intn(len(games.Objects))]
-
+		game := &games.Objects[i]
 		t, err := time.Parse("1/2/2006 15:04 PM", game.Created)
 		if err != nil {
 			fmt.Println(err)
