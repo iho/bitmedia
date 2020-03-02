@@ -12,7 +12,6 @@ require (
 	github.com/mattn/go-isatty v0.0.12 // indirect
 	github.com/modern-go/concurrent v0.0.0-20180306012644-bacd9c7ef1dd // indirect
 	github.com/modern-go/reflect2 v1.0.1 // indirect
-	github.com/pbnjay/strptime v0.0.0-20140226051138-5c05b0d668c9
 	go.mongodb.org/mongo-driver v1.3.0
 	golang.org/x/sys v0.0.0-20200302083256-062a44052db1 // indirect
 	gopkg.in/go-playground/validator.v9 v9.31.0 // indirect

@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"io/ioutil"
 	"math/rand"
+	"runtime"
+	"sync"
 
 	"log"
 	"os"
@@ -14,8 +16,6 @@ import (
 	"github.com/iho/bitmedia/models"
 	"github.com/knz/strtime"
 
-	// "github.com/knz/strtime"
-	"github.com/pbnjay/strptime"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
 
@@ -31,14 +31,14 @@ type GameResultJSON struct {
 }
 
 const (
-	MINIMUM_SIZE                  int = 5000
-	MAXIMUM_SIZE                  int = MINIMUM_SIZE * 2
-	NUMBER_OF_PARALLEL_INSERTIONS int = 4
+	MINIMUM_SIZE   int = 5000
+	MAXIMUM_SIZE   int = MINIMUM_SIZE * 2
+	MAX_CONCURENCY int = 4
 )
 
 func main() {
 
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Minute)
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Hour)
 	defer cancel()
 
 	client, err := mongo.Connect(ctx, options.Client().ApplyURI("mongodb://localhost:27017"))
@@ -68,7 +68,7 @@ func main() {
 	var usersInterfacesArray []interface{} = make([]interface{}, len(usersJSON.Objects))
 
 	const dateFormat = "%A, %B %-d, %Y %-I:%M %p"
-	// const dateFormat = "Monday, September 29, 5417 9:07 AM"
+
 	for i, user := range usersJSON.Objects {
 
 		t, err := strtime.Strptime(user.BirthDate, dateFormat)
@@ -98,48 +98,58 @@ func main() {
 	}
 	byteValue, _ = ioutil.ReadAll(jsonFile)
 	err = json.Unmarshal(byteValue, &gamesResultJSON)
+	parseGameDates(&gamesResultJSON)
 	if err != nil {
 		log.Fatal(err)
 	}
 	rand.Seed(time.Now().Unix())
-	ch := make(chan bool, NUMBER_OF_PARALLEL_INSERTIONS)
+	ch := make(chan bool, 1)
+	var wg sync.WaitGroup
+
 	for _, userID := range insertionResult.InsertedIDs {
 		primitiveUserID := userID.(primitive.ObjectID)
-		go InsertGames(ctx, userGamesCollection, primitiveUserID, &gamesResultJSON, ch)
+		wg.Add(1)
+		go InsertGames(ctx, userGamesCollection, primitiveUserID, &gamesResultJSON, ch, &wg)
 		ch <- true
 	}
 
 	if err != nil {
 		log.Fatal(err)
 	}
+	wg.Wait()
 	fmt.Println("Files have been loaded successfully")
 }
 
-func InsertGames(ctx context.Context, collection *mongo.Collection, UserID primitive.ObjectID, games *GameResultJSON, ch chan bool) {
+func InsertGames(ctx context.Context, collection *mongo.Collection, UserID primitive.ObjectID, games *GameResultJSON, ch chan bool, wg *sync.WaitGroup) {
 	<-ch
 	quantity := rand.Intn(MAXIMUM_SIZE-MINIMUM_SIZE) + MINIMUM_SIZE
 	var userGamesInterfacesArray []interface{} = make([]interface{}, quantity)
 	for i := 0; i < quantity; i++ {
 		game := games.Objects[rand.Intn(len(games.Objects))]
 		game.UserID = UserID
+		userGamesInterfacesArray[i] = game
+	}
 
-		// const formatString = "6/27/2019 7:11 PM"
-		// const formatString = "6/27/2019 7:11 PM"
-		// const dateFormat = "%A, %B %-d, %Y %-I:%M %p"
-		const dateFormat = "%-m/%-d/%Y %-I:%M %p"
-		fmt.Println(game.Created)
-		t, err := strptime.Parse(game.Created, dateFormat)
+	// go func(userGamesInterfacesArray []interface{}) {
+	_, err := collection.InsertMany(ctx, userGamesInterfacesArray)
+	if err != nil {
+		log.Fatal(err)
+	}
+	wg.Done()
+	runtime.GC()
+	// }(userGamesInterfacesArray)
+}
+
+func parseGameDates(games *GameResultJSON) {
+	for i := 0; i < len(games.Objects); i++ {
+		game := &games.Objects[rand.Intn(len(games.Objects))]
+
+		t, err := time.Parse("1/2/2006 15:04 PM", game.Created)
 		if err != nil {
-			fmt.Println(game.Created)
-			// fmt.Println("end")
 			fmt.Println(err)
 			t = time.Now()
 		}
 		game.CreatedTime = t
-		userGamesInterfacesArray[i] = game
-	}
-	_, err := collection.InsertMany(ctx, userGamesInterfacesArray)
-	if err != nil {
-		log.Fatal(err)
+		games.Objects[i] = *game
 	}
 }
