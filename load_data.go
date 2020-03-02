@@ -12,6 +12,10 @@ import (
 	"time"
 
 	"github.com/iho/bitmedia/models"
+	"github.com/knz/strtime"
+
+	// "github.com/knz/strtime"
+	"github.com/pbnjay/strptime"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
 
@@ -62,7 +66,17 @@ func main() {
 	}
 
 	var usersInterfacesArray []interface{} = make([]interface{}, len(usersJSON.Objects))
+
+	const dateFormat = "%A, %B %-d, %Y %-I:%M %p"
+	// const dateFormat = "Monday, September 29, 5417 9:07 AM"
 	for i, user := range usersJSON.Objects {
+
+		t, err := strtime.Strptime(user.BirthDate, dateFormat)
+		if err != nil {
+			fmt.Println(err)
+			t = time.Now()
+		}
+		user.BirthDateTime = t
 		usersInterfacesArray[i] = user
 	}
 
@@ -108,6 +122,20 @@ func InsertGames(ctx context.Context, collection *mongo.Collection, UserID primi
 	for i := 0; i < quantity; i++ {
 		game := games.Objects[rand.Intn(len(games.Objects))]
 		game.UserID = UserID
+
+		// const formatString = "6/27/2019 7:11 PM"
+		// const formatString = "6/27/2019 7:11 PM"
+		// const dateFormat = "%A, %B %-d, %Y %-I:%M %p"
+		const dateFormat = "%-m/%-d/%Y %-I:%M %p"
+		fmt.Println(game.Created)
+		t, err := strptime.Parse(game.Created, dateFormat)
+		if err != nil {
+			fmt.Println(game.Created)
+			// fmt.Println("end")
+			fmt.Println(err)
+			t = time.Now()
+		}
+		game.CreatedTime = t
 		userGamesInterfacesArray[i] = game
 	}
 	_, err := collection.InsertMany(ctx, userGamesInterfacesArray)
