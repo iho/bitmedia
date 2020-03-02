@@ -33,7 +33,7 @@ type GameResultJSON struct {
 const (
 	MINIMUM_SIZE   int = 5000
 	MAXIMUM_SIZE   int = MINIMUM_SIZE * 2
-	MAX_CONCURENCY int = 4
+	MAX_CONCURENCY int = 16
 )
 
 func main() {
@@ -103,14 +103,14 @@ func main() {
 		log.Fatal(err)
 	}
 	rand.Seed(time.Now().Unix())
-	ch := make(chan bool, 1)
+	ch := make(chan bool, MAX_CONCURENCY)
 	var wg sync.WaitGroup
 
 	for _, userID := range insertionResult.InsertedIDs {
 		primitiveUserID := userID.(primitive.ObjectID)
 		wg.Add(1)
 		go InsertGames(ctx, userGamesCollection, primitiveUserID, &gamesResultJSON, ch, &wg)
-		ch <- true
+		<-ch
 	}
 
 	if err != nil {
@@ -121,7 +121,7 @@ func main() {
 }
 
 func InsertGames(ctx context.Context, collection *mongo.Collection, UserID primitive.ObjectID, games *GameResultJSON, ch chan bool, wg *sync.WaitGroup) {
-	<-ch
+	fmt.Println("thread started")
 	quantity := rand.Intn(MAXIMUM_SIZE-MINIMUM_SIZE) + MINIMUM_SIZE
 	var userGamesInterfacesArray []interface{} = make([]interface{}, quantity)
 	for i := 0; i < quantity; i++ {
@@ -129,15 +129,14 @@ func InsertGames(ctx context.Context, collection *mongo.Collection, UserID primi
 		game.UserID = UserID
 		userGamesInterfacesArray[i] = game
 	}
-
-	// go func(userGamesInterfacesArray []interface{}) {
-	_, err := collection.InsertMany(ctx, userGamesInterfacesArray)
+	res, err := collection.InsertMany(ctx, userGamesInterfacesArray)
 	if err != nil {
 		log.Fatal(err)
 	}
+	fmt.Println(len(res.InsertedIDs))
+	ch <- true
 	wg.Done()
 	runtime.GC()
-	// }(userGamesInterfacesArray)
 }
 
 func parseGameDates(games *GameResultJSON) {
