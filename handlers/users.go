@@ -10,25 +10,29 @@ import (
 	"github.com/gin-gonic/gin/binding"
 	"github.com/iho/bitmedia/models"
 	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
-// 	validate := validator.New()
+func (e *Env) UserStats(c *gin.Context) {
+	id := c.Param("id")
+	userID, err := primitive.ObjectIDFromHex(id)
 
-// 	validate.RegisterStructValidation(UserStructLevelValidation, User{})
-// }
-// func СreateUser(c *gin.Context) {
-// 	var user User
-// 	if err := c.ShouldBindWith(&b, binding.Query); err == nil {
-// 		c.JSON(http.StatusOK, gin.H{"message": "Booking dates are valid!"})
-// 	} else {
-// 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-// 	}
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	usersCollection := e.Db.Collection("user_games")
+	ctx := c.Request.Context()
+	number, err := usersCollection.CountDocuments(ctx, bson.M{"userid": userID})
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"number": number})
 
-// 	err := validate.Struct(mystruct)
-// 	validationErrors := err.(validator.ValidationErrors)
-// }
+}
 
 type ListsUsersQueryParams struct {
 	Email          string

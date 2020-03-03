@@ -96,11 +96,12 @@ func main() {
 		// },
 		MaxAge: 12 * time.Hour,
 	}))
-	// router.POST("/users", handlers.CreateUser)
+	router.POST("/users/:id/stats", env.UserStats)
+
 	router.GET("/users", env.ListUsers)
 
 	router.GET("/games", env.ListGames)
-	// router.GET("/games/:id/tats", listUsers)
+	router.GET("/games/stats", env.GameStats)
 
 	router.Run()
 }
