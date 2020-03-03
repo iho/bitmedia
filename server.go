@@ -14,7 +14,7 @@ import (
 )
 
 func main() {
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Hour)
 	defer cancel()
 
 	client, err := mongo.Connect(ctx, options.Client().ApplyURI("mongodb://localhost:27017"))
@@ -93,7 +93,7 @@ func main() {
 		AllowCredentials: true,
 		MaxAge:           12 * time.Hour,
 	}))
-	router.POST("/users/:id/stats", env.UserStats)
+	router.GET("/users/:id/stats", env.UserStats)
 
 	router.GET("/users", env.ListUsers)
 

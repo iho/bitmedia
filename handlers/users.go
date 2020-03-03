@@ -29,7 +29,7 @@ func (e *Env) UserStats(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"number": number})
+	c.JSON(http.StatusOK, gin.H{"gamesPlayed": number})
 
 }
 
@@ -52,76 +52,73 @@ func (e *Env) ListUsers(c *gin.Context) {
 	var params ListsUsersQueryParams
 	var users []models.User
 	var limit int64 = 100
-	if err := c.ShouldBindWith(&params, binding.Query); err == nil {
-		ctx := c.Request.Context()
-		usersCollection := e.Db.Collection("users")
+	err := c.ShouldBindWith(&params, binding.Query)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	ctx := c.Request.Context()
+	usersCollection := e.Db.Collection("users")
 
-		dbParams := bson.M{}
-		if params.Email != "" {
-			dbParams["email"] = params.Email
+	dbParams := buildDBParams(params)
 
-		}
-		if params.LastName != "" {
-			dbParams["lastname"] = params.LastName
-		}
-		if params.Country != "" {
-			dbParams["country"] = params.Country
-		}
-		if params.City != "" {
-			dbParams["city"] = params.City
-		}
-		if params.Gender != "" {
-			dbParams["gender"] = params.Gender
-		}
-		if (params.BirthDateStart != time.Time{} || params.BirthDateEnd != time.Time{} || params.After == time.Time{}) {
-			birthDate := bson.M{}
-			if (params.After != time.Time{}) {
-				birthDate["$gt"] = params.After
-				dbParams["birth_date"] = birthDate
-			}
-			if (params.BirthDateEnd != time.Time{}) {
-				birthDate["$lte"] = params.BirthDateEnd
-				dbParams["birth_date"] = birthDate
-			}
-			if (params.BirthDateStart != time.Time{}) {
-				if (params.After == time.Time{}) {
-					birthDate["$gt"] = params.BirthDateStart
-					dbParams["birth_date"] = birthDate
-				} else {
-					bigger := params.BirthDateStart
-					if params.After.After(params.BirthDateStart) {
-						bigger = params.After
-					}
-					birthDate["$gt"] = bigger
-					dbParams["birth_date"] = birthDate
-				}
-			}
-		}
-
-		findOptions := options.Find()
-		findOptions.SetLimit(limit)
-		findOptions.SetSort(bson.M{"birth_date": -1})
-		cur, err := usersCollection.Find(ctx, dbParams, findOptions)
+	findOptions := options.Find()
+	findOptions.SetLimit(limit)
+	findOptions.SetSort(bson.M{"birth_date": 1})
+	cur, err := usersCollection.Find(ctx, dbParams, findOptions)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer cur.Close(ctx)
+	for cur.Next(ctx) {
+		var result models.User
+		err := cur.Decode(&result)
 		if err != nil {
 			log.Fatal(err)
 		}
-		defer cur.Close(ctx)
-		for cur.Next(ctx) {
-			var result models.User
-			err := cur.Decode(&result)
-			if err != nil {
-				log.Fatal(err)
-			}
-			// TODO move in functions
-			result.BirthDate = result.BirthDateTime.Format("2006-01-02")
-			result.BirthDateTime = time.Time{}
-			users = append(users, result)
-		}
-		if err := cur.Err(); err != nil {
-			log.Fatal(err)
-		}
-		c.JSON(http.StatusOK, gin.H{"users": users})
-	} else {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		// TODO move in functions
+		result.BirthDate = result.BirthDateTime.Format("2006-01-02")
+		result.BirthDateTime = time.Time{}
+		users = append(users, result)
 	}
+	if err := cur.Err(); err != nil {
+		log.Fatal(err)
+	}
+	c.JSON(http.StatusOK, gin.H{"users": users})
+
+}
+
+func buildDBParams(params ListsUsersQueryParams) bson.M {
+	dbParams := bson.M{}
+	if params.Email != "" {
+		dbParams["email"] = params.Email
+	}
+	if params.LastName != "" {
+		dbParams["lastname"] = params.LastName
+	}
+	if params.Country != "" {
+		dbParams["country"] = params.Country
+	}
+	if params.City != "" {
+		dbParams["city"] = params.City
+	}
+	if params.Gender != "" {
+		dbParams["gender"] = params.Gender
+	}
+	birthDate := bson.M{}
+
+	if !params.BirthDateEnd.IsZero() {
+		birthDate["$lte"] = params.BirthDateEnd
+	}
+
+	bigger := params.BirthDateStart
+	if params.After.After(params.BirthDateStart) {
+		bigger = params.After
+	}
+	birthDate["$gt"] = bigger
+
+	if len(birthDate) != 0 {
+		dbParams["birth_date"] = birthDate
+	}
+	return dbParams
 }
