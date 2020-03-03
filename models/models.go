@@ -7,13 +7,14 @@ import (
 )
 
 type User struct {
-	Email         string    `json:"email"`
-	LastName      string    `json:"last_name"`
-	Country       string    `json:"country"`
-	City          string    `json:"city"`
-	Gender        string    `json:"gender"`
-	BirthDate     string    `json:"birth_date" bson:"-"`
-	BirthDateTime time.Time `json:"birth_date_time,omitempty" bson:"birth_date"`
+	ID            primitive.ObjectID `json:"id" bson:"_id,omitempty"`
+	Email         string             `json:"email" validate:"required,email"`
+	LastName      string             `json:"last_name" validate:"required"`
+	Country       string             `json:"country" validate:"required"`
+	City          string             `json:"city" validate:"required"`
+	Gender        string             `json:"gender" validate:"required"`
+	BirthDate     string             `json:"birth_date,omitempty" bson:"-" validate:"required"`
+	BirthDateTime time.Time          `json:"-" bson:"birth_date"`
 }
 
 type GameResult struct {
@@ -21,6 +22,7 @@ type GameResult struct {
 	WinStatus    string             `json:"win_status"`
 	GameType     string             `json:"game_type"`
 	Created      string             `json:"created" bson:"-"`
-	CreatedTime  time.Time          `json:"created_time,omitempty" bson:"created"`
+	CreatedTime  time.Time          `json:"-" bson:"created"`
+	ID           primitive.ObjectID `json:"id" bson:"_id,omitempty"`
 	UserID       primitive.ObjectID `json:"user_id"`
 }

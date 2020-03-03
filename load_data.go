@@ -13,7 +13,8 @@ import (
 	"time"
 
 	"github.com/iho/bitmedia/models"
-	"github.com/knz/strtime"
+
+	"github.com/jeffjen/datefmt"
 
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
@@ -66,15 +67,15 @@ func main() {
 
 	var usersInterfacesArray []interface{} = make([]interface{}, len(usersJSON.Objects))
 
-	const dateFormat = "%A, %B %-d, %Y %-I:%M %p"
+	const dateFormat = "%A, %B %-d, %Y %I:%M %p"
 
 	for i, user := range usersJSON.Objects {
-
-		t, err := strtime.Strptime(user.BirthDate, dateFormat)
+		t, err := datefmt.Strptime(dateFormat, user.BirthDate)
 		if err != nil {
 			fmt.Println(err)
 			t = time.Now()
 		}
+
 		user.BirthDateTime = t
 		usersInterfacesArray[i] = user
 	}
@@ -95,12 +96,14 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
+
 	byteValue, _ = ioutil.ReadAll(jsonFile)
 	err = json.Unmarshal(byteValue, &gamesResultJSON)
-	parseGameDates(&gamesResultJSON)
 	if err != nil {
 		log.Fatal(err)
 	}
+	parseGameDates(&gamesResultJSON)
+
 	rand.Seed(time.Now().Unix())
 	wg := new(sync.WaitGroup)
 	wg.Add(len(insertionResult.InsertedIDs))
