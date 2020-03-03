@@ -9,18 +9,9 @@ import (
 )
 
 func (e *Env) GameStats(c *gin.Context) {
-	// id := c.Param("gameid")
-	// gameID, err := primitive.ObjectIDFromHex(id)
-
-	// if err != nil {
-	// 	c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-	// 	return
-	// }
 	usersCollection := e.Db.Collection("user_games")
 	ctx := c.Request.Context()
-
 	pipeline := []bson.M{
-		// bson.M{"$match": bson.M{"game_type": id},
 		bson.M{
 			"$group": bson.M{
 				"_id": bson.M{
@@ -50,8 +41,8 @@ func (e *Env) GameStats(c *gin.Context) {
 }
 
 type UserRatingQueryParams struct {
-	limit int
-	skip  int
+	Limit int
+	Skip  int
 }
 
 func (e *Env) UserRating(c *gin.Context) {
@@ -74,8 +65,8 @@ func (e *Env) UserRating(c *gin.Context) {
 					"count": -1,
 				},
 			},
-			bson.M{"$limit": 100},
-			bson.M{"$skip": 100},
+			bson.M{"$limit": params.Limit},
+			bson.M{"$skip": params.Skip},
 		}
 
 		res, err := usersCollection.Aggregate(ctx, pipeline)
@@ -90,31 +81,3 @@ func (e *Env) UserRating(c *gin.Context) {
 	}
 
 }
-
-// [{$match: {
-//     gametype: "17"
-//   }}, {$group: {
-//     _id: {"$dateToString": {
-//                   "format": "%Y-%m-%d",
-//                   "date": {
-//                       "$toDate": "$created"
-//                   }
-//               }},
-//       "count": { "$sum": 1 }
-//   }}, {$sort: {
-//     _id: 1
-//   }}]
-
-//   [{$match: {
-//     gametype: "17"
-//   }}, {$group: {
-//     _id: {"date": {"$dateToString": {
-//                   "format": "%Y-%m-%d",
-//                   "date": {
-//                       "$toDate": "$created"
-//                   }
-//               }}, gametype: "$gametype"},
-//       "count": { "$sum": 1 }
-//   }}, {$sort: {
-//     _id: 1
-//   }}]
