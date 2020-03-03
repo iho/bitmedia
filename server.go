@@ -99,6 +99,7 @@ func main() {
 
 	router.GET("/games", env.ListGames)
 	router.GET("/games/stats", env.GameStats)
+	router.GET("/rating", env.UserRating)
 
 	router.Run()
 }

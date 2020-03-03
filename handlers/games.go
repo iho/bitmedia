@@ -46,6 +46,26 @@ func (e *Env) ListGames(c *gin.Context) {
 	if params.GameType != "" {
 		dbParams["gametype"] = params.GameType
 	}
+
+	createdDate := bson.M{}
+	if !params.CreatedEnd.IsZero() {
+		createdDate["$lte"] = params.CreatedEnd
+	}
+	if !params.CreatedStart.IsZero() {
+		createdDate["$get"] = params.CreatedStart
+	}
+	if len(createdDate) != 0 {
+		dbParams["created"] = createdDate
+	}
+
+	if params.After != "" {
+		gameID, err := primitive.ObjectIDFromHex(params.After)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			return
+		}
+		dbParams["_id"] = bson.M{"$gt": gameID}
+	}
 	if params.UserID != "" {
 		userID, err := primitive.ObjectIDFromHex(params.UserID)
 		if err != nil {
@@ -55,23 +75,6 @@ func (e *Env) ListGames(c *gin.Context) {
 		dbParams["userID"] = userID
 	}
 
-	createdDate := bson.M{}
-
-	if !params.CreatedEnd.IsZero() {
-		createdDate["$lte"] = params.CreatedEnd
-	}
-	if params.After != "" {
-		gameID, err := primitive.ObjectIDFromHex(params.After)
-		if err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-			return
-		}
-		dbParams["_id"] = bson.M{"$gt": gameID}
-	}
-
-	if len(createdDate) != 0 {
-		dbParams["created"] = createdDate
-	}
 
 	findOptions := options.Find()
 	findOptions.SetLimit(limit)
