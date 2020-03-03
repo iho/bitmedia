@@ -1,7 +1,6 @@
 package handlers
 
 import (
-	"fmt"
 	"log"
 	"net/http"
 	"time"
@@ -79,12 +78,10 @@ func (e *Env) ListUsers(c *gin.Context) {
 			if (params.After != time.Time{}) {
 				birthDate["$gt"] = params.After
 				dbParams["birth_date"] = birthDate
-				fmt.Println(params.After)
 			}
 			if (params.BirthDateEnd != time.Time{}) {
 				birthDate["$lte"] = params.BirthDateEnd
 				dbParams["birth_date"] = birthDate
-				fmt.Println(params.BirthDateEnd)
 			}
 			if (params.BirthDateStart != time.Time{}) {
 				if (params.After == time.Time{}) {
