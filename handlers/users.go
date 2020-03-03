@@ -99,12 +99,7 @@ func (e *Env) ListUsers(c *gin.Context) {
 					dbParams["birth_date"] = birthDate
 				}
 			}
-
-			fmt.Println(birthDate)
-
 		}
-
-		fmt.Println(dbParams)
 
 		findOptions := options.Find()
 		findOptions.SetLimit(limit)
