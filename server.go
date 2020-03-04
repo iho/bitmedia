@@ -28,7 +28,32 @@ func main() {
 	// TODO move to separate function
 	usersCollection := database.Collection("users")
 	userGamesCollection := database.Collection("user_games")
-	_, err = usersCollection.Indexes().CreateMany(ctx, []mongo.IndexModel{{
+	buildIndixes(ctx, usersCollection, userGamesCollection)
+
+	router := gin.Default()
+	router.Use(gin.Logger())
+	router.Use(gin.Recovery())
+	router.Use(cors.New(cors.Config{
+		AllowOrigins:     []string{"https://postwoman.io"},
+		AllowMethods:     []string{"PUT", "PATCH"},
+		AllowHeaders:     []string{"Origin"},
+		ExposeHeaders:    []string{"Content-Length"},
+		AllowCredentials: true,
+		MaxAge:           12 * time.Hour,
+	}))
+	router.GET("/users/:id/stats", env.UserStats)
+
+	router.GET("/users", env.ListUsers)
+
+	router.GET("/games", env.ListGames)
+	router.GET("/games/stats", env.GameStats)
+	router.GET("/rating", env.UserRating)
+
+	router.Run()
+}
+
+func buildIndixes(ctx context.Context, usersCollection *mongo.Collection, userGamesCollection *mongo.Collection) {
+	_, err := usersCollection.Indexes().CreateMany(ctx, []mongo.IndexModel{{
 		Keys: bson.M{
 			"birth_date": -1,
 		},
@@ -81,25 +106,4 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-
-	router := gin.Default()
-	router.Use(gin.Logger())
-	router.Use(gin.Recovery())
-	router.Use(cors.New(cors.Config{
-		AllowOrigins:     []string{"https://postwoman.io"},
-		AllowMethods:     []string{"PUT", "PATCH"},
-		AllowHeaders:     []string{"Origin"},
-		ExposeHeaders:    []string{"Content-Length"},
-		AllowCredentials: true,
-		MaxAge:           12 * time.Hour,
-	}))
-	router.GET("/users/:id/stats", env.UserStats)
-
-	router.GET("/users", env.ListUsers)
-
-	router.GET("/games", env.ListGames)
-	router.GET("/games/stats", env.GameStats)
-	router.GET("/rating", env.UserRating)
-
-	router.Run()
 }

@@ -1,13 +1,14 @@
 package handlers
 
 import (
-	"context"
 	"net/http"
 	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/gin-gonic/gin/binding"
+	"github.com/iho/bitmedia/models"
 	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
 type GameStatsQueryParams struct {
@@ -19,82 +20,54 @@ type GameStatsQueryParams struct {
 }
 
 func (e *Env) GameStats(c *gin.Context) {
-	usersCollection := e.Db.Collection("user_games")
+	// usersCollection := e.Db.Collection("user_games")
 	// ctx := c.Request.Context()
 	var params GameStatsQueryParams
 	err := c.ShouldBindWith(&params, binding.Query)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "error"})
 	}
-	pipeline := []bson.M{bson.M{"$match": bson.M{"created": bson.M{"$gt": params.CreatedStart, "$lt": params.CreatedEnd}}}}
-	if params.GameType != "" {
-		pipeline = append(pipeline, bson.M{"$match": bson.M{"game_type": params.GameType}})
-	}
-
-	pipeline = append(pipeline,
-		bson.M{
-			"$group": bson.M{
-				"_id": bson.M{
-					"date": bson.M{
-						"$dateToString": bson.M{
-							"format": "%Y-%m-%d",
-							"date":   "$created",
-						},
-					},
-					"gametype": "$gametype",
-				},
-				"count": bson.M{"$sum": 1},
-			},
-		})
-	pipeline = append(pipeline, bson.M{"$sort": bson.M{"_id": 1}})
-
-	res, err := usersCollection.Aggregate(context.Background(), pipeline)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"res": res})
+	c.JSON(http.StatusOK, gin.H{"res": err.Error()})
 
 }
 
 type UserRatingQueryParams struct {
-	Limit int
-	Skip  int
+	Limit int64
+	Skip  int64
 }
 
 func (e *Env) UserRating(c *gin.Context) {
-
-	usersCollection := e.Db.Collection("user_games")
+	ctx := c.Request.Context()
+	usersCollection := e.Db.Collection("users")
 	// ctx := c.Request.Context()
 	var params UserRatingQueryParams
 	err := c.ShouldBindWith(&params, binding.Query)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 	}
-
-	pipeline := []bson.M{
-		bson.M{
-			"$group": bson.M{
-				"_id": "$userid",
-				"count": bson.M{
-					"$sum": 1,
-				},
-			},
-		},
-		bson.M{
-			"$sort": bson.M{
-				"count": -1,
-			},
-		},
-		bson.M{"$limit": params.Limit},
-		bson.M{"$skip": params.Skip},
+	var limit int64 = 100
+	if params.Limit != 0 {
+		limit = params.Limit
 	}
-
-	res, err := usersCollection.Aggregate(context.Background(), pipeline)
+	options := options.Find()
+	options.SetLimit(limit)
+	options.SetSkip(params.Skip)
+	options.SetSort(bson.M{"games_played": -1})
+	cur, err := usersCollection.Find(ctx, bson.M{}, options)
 
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"res": res})
+	var results []models.User
+	err = cur.All(ctx, &results)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"rating": results})
 }
