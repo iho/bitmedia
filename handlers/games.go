@@ -1,7 +1,6 @@
 package handlers
 
 import (
-	"log"
 	"net/http"
 	"time"
 
@@ -18,8 +17,8 @@ type ListsGamesQueryParams struct {
 	WinStatus    string
 	GameType     string
 	UserID       string
-	CreatedStart time.Time `time_format:"2006-01-02T15:04:05"`
-	CreatedEnd   time.Time `time_format:"2006-01-02T15:04:05"`
+	CreatedStart time.Time `time_format:"2006-01-02"`
+	CreatedEnd   time.Time `time_format:"2006-01-02"`
 	After        string
 }
 
@@ -52,7 +51,7 @@ func (e *Env) ListGames(c *gin.Context) {
 		createdDate["$lte"] = params.CreatedEnd
 	}
 	if !params.CreatedStart.IsZero() {
-		createdDate["$get"] = params.CreatedStart
+		createdDate["$gt"] = params.CreatedStart
 	}
 	if len(createdDate) != 0 {
 		dbParams["created"] = createdDate
@@ -75,20 +74,19 @@ func (e *Env) ListGames(c *gin.Context) {
 		dbParams["userID"] = userID
 	}
 
-
 	findOptions := options.Find()
 	findOptions.SetLimit(limit)
 	findOptions.SetSort(bson.M{"_id": 1})
 	cur, err := usersCollection.Find(ctx, dbParams, findOptions)
 	if err != nil {
-		log.Fatal(err)
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 	}
 	defer cur.Close(ctx)
 	for cur.Next(ctx) {
 		var result models.GameResult
 		err := cur.Decode(&result)
 		if err != nil {
-			log.Fatal(err)
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		}
 		// TODO move in functions
 		result.Created = result.CreatedTime.Format("2006-01-02T15:04:05")
@@ -96,7 +94,7 @@ func (e *Env) ListGames(c *gin.Context) {
 		gameResults = append(gameResults, result)
 	}
 	if err := cur.Err(); err != nil {
-		log.Fatal(err)
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 	}
 	c.JSON(http.StatusOK, gin.H{"gameResults": gameResults})
 

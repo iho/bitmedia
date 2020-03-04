@@ -1,7 +1,6 @@
 package handlers
 
 import (
-	"log"
 	"net/http"
 	"time"
 
@@ -61,20 +60,19 @@ func (e *Env) ListUsers(c *gin.Context) {
 	usersCollection := e.Db.Collection("users")
 
 	dbParams := buildDBParams(params)
-
 	findOptions := options.Find()
 	findOptions.SetLimit(limit)
 	findOptions.SetSort(bson.M{"birth_date": 1})
 	cur, err := usersCollection.Find(ctx, dbParams, findOptions)
 	if err != nil {
-		log.Fatal(err)
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 	}
 	defer cur.Close(ctx)
 	for cur.Next(ctx) {
 		var result models.User
 		err := cur.Decode(&result)
 		if err != nil {
-			log.Fatal(err)
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		}
 		// TODO move in functions
 		result.BirthDate = result.BirthDateTime.Format("2006-01-02")
@@ -82,7 +80,7 @@ func (e *Env) ListUsers(c *gin.Context) {
 		users = append(users, result)
 	}
 	if err := cur.Err(); err != nil {
-		log.Fatal(err)
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 	}
 	c.JSON(http.StatusOK, gin.H{"users": users})
 
