@@ -15,6 +15,7 @@ type User struct {
 	Gender        string             `json:"gender" validate:"required"`
 	BirthDate     string             `json:"birth_date,omitempty" bson:"-" validate:"required"`
 	BirthDateTime time.Time          `json:"-" bson:"birth_date"`
+	GamesPlayed   int                `json:"games_played,omitempty" bson:"games_played,omitempty"`
 }
 
 type GameResult struct {
@@ -25,4 +26,10 @@ type GameResult struct {
 	CreatedTime  time.Time          `json:"-" bson:"created"`
 	ID           primitive.ObjectID `json:"id" bson:"_id,omitempty"`
 	UserID       primitive.ObjectID `json:"user_id"`
+}
+type GameStats struct {
+	ID       primitive.ObjectID `json:"id" bson:"_id,omitempty"`
+	Date     time.Time          `json:"date" bson:"date"`
+	Count    int                `json:"count" bson:"count"`
+	GameType string             `json:"game_type"`
 }
